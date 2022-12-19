@@ -1,0 +1,24 @@
+{
+  "name": "@vnuge/vnlib.browser",
+  "version": "1.0.0",
+  "description": "VNLib browser client base library for a Vue3 w/ VueUse web application.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Vaughn Nugent",
+  "license": "ISC",
+  "devDependencies": {
+    "@vueuse/core": "^9.x",
+    "@vueuse/integrations": "^9.1.x",
+    "axios": "^1.x",
+    "jwt-decode": "^3.1.2",
+    "lodash": "^4.x",
+    "universal-cookie": "^4.0.4"
+  },
+  "peerDependencies": {
+    "@kyvg/vue3-notification": "^2.3.x",
+    "vue": "^3.x",
+    "vue-router": "^4.x"
+  }
+}
