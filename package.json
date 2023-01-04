@@ -3,9 +3,7 @@
   "version": "1.0.0",
   "description": "VNLib browser client base library for a Vue3 w/ VueUse web application.",
   "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
+  "scripts": {},
   "author": "Vaughn Nugent",
   "license": "ISC",
   "devDependencies": {

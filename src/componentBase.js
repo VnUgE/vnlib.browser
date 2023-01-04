@@ -19,13 +19,13 @@
 
 
 import _ from 'lodash'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { computed, reactive, readonly, ref, watch } from 'vue'
 import { useSession } from './session'
 import { useFormToaster, useToaster } from './toast.js'
 import { useAxios } from './axios'
 import { notify } from '@kyvg/vue3-notification'
-import { useConfirmDialog } from "@vueuse/core";
+import { useConfirmDialog, watchThrottled } from "@vueuse/core";
 
 //const validationTitle = 'Please verify your form'
 const formMessageId = 'form-message'
@@ -62,17 +62,30 @@ const validate = async function (v$) {
 //Clear the form message when message is cleared
 watch(_message, () => !_.isEmpty(_message.value) ? notifyError(_message.value, '') : notify.close(formMessageId))
 
+/** 
+ * When called, configures the component to 
+ * only be visible when the user is logged in. If the user is 
+ * not logged in, the user is redirected to the login page. 
+ * @remarks Once called, if the user is logged-in changes will be
+ * watch to redirect if the user becomes logged out.
+*/
 export const usePageGuard = function () {
 
-  const { push } = useRouter() 
+  const { push } = useRouter()
+  const route = useRoute() 
+
+  const goToLogin = () =>{
+    //Save the last page to return to after login
+    push({ name: 'Login', query: { from: route.path } })
+  }
 
   // Initial check for logged in to guard the page
-  if(!loggedIn.value){
-    push({name:'Login'})
+  if(!loggedIn.value){ 
+    goToLogin();
   }
   // setup watcher on session login value
   // If the login value changes to false, redirect to login page
-  watch(loggedIn, value => !value ? push({ name: 'Login' }) : null)
+  watch(loggedIn, value => !value ? goToLogin() : null)
 }
 
 /**
@@ -163,9 +176,25 @@ export const apiCall = async function(asyncFunc, message = undefined){
 
 }
 
+/**
+ * Uses the internal waiting flag to determine if the component should be waiting
+ * based on pending apiCall() requests.  
+ * @returns {Object} { waiting: Boolean, setWaiting: Function }
+ * @example //Waiting flag is reactive
+ * const { waiting, setWaiting } = useWait()
+ * setWaiting(true) //Manually set the waiting flag
+ * setWaiting(false) //Manually clear the waiting flag
+ */
 export const useWait = () => {
   return{
+    /**
+     * The waiting flag
+     */
     waiting: readonly(_waiting),
+    /**
+     * Sets the waiting flag to the value passed in
+     * @param {Boolean} value The value to set the waiting flag to
+     */
     setWaiting: (value) => _waiting.value = value
   }
 }
@@ -285,3 +314,19 @@ export const useEnvSize = (function(){
     }
   }
 })()
+
+/**
+ * Configures a listener to watch for route changes and 
+ * scrolls the window to the top of the page to reset the scroll position.
+ * @remarks This is useful for single page applications that use the router, it should 
+ * only be called once in the main app component.
+ */
+export const useScrollOnRouteChange = function(){
+
+  //Get route to watch for changes
+  const route = useRoute() 
+
+  //Watch throttled and scroll when route changes
+  watchThrottled(route, () => window.scrollTo(0, 0), {immediate: true, deep: true, throttle:100})
+
+}
