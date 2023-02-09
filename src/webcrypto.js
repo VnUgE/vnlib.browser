@@ -18,7 +18,7 @@
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
-import _ from 'lodash';
+import { isString, isArrayBuffer, isPlainObject } from 'lodash';
 import { ArrayBuffToBase64, Base64ToUint8Array } from './binhelpers';
 
 const crypto = window.crypto.subtle
@@ -33,10 +33,10 @@ const crypto = window.crypto.subtle
  */
 export const hmacSignAsync = async function (keyBuffer, dataBuffer, alg, toBase64 = false) {
      // Check key argument type
-    let rawKeyBuffer = _.isString(keyBuffer) ? Base64ToUint8Array(keyBuffer) : keyBuffer
+    let rawKeyBuffer = isString(keyBuffer) ? Base64ToUint8Array(keyBuffer) : keyBuffer
     
     // Check data argument type
-    let rawDataBuffer = _.isString(dataBuffer) ? Base64ToUint8Array(dataBuffer) : dataBuffer
+    let rawDataBuffer = isString(dataBuffer) ? Base64ToUint8Array(dataBuffer) : dataBuffer
    
     // Get the key
     const hmacKey = await crypto.importKey('raw', rawKeyBuffer, { name: 'HMAC', hash: alg }, false, ['sign'])
@@ -56,19 +56,19 @@ export const hmacSignAsync = async function (keyBuffer, dataBuffer, alg, toBase6
  */
 export const decryptAsync = async function (algorithm, privKey, data, toBase64 = false) {
       // Check data argument type and decode if needed
-    let dataBuffer = _.isString(data) ? Base64ToUint8Array(data) : data
+    let dataBuffer = isString(data) ? Base64ToUint8Array(data) : data
     
     let privateKey = null
     // Check key argument type
-    if (_.isString(privKey)) {
+    if (isString(privKey)) {
         privateKey = privKey
     }
     // If key is binary data, then import it as raw data
-    else if (_.isArrayBuffer(privKey)) {
+    else if (isArrayBuffer(privKey)) {
         privateKey = await crypto.importKey('raw', privKey, algorithm, true, ['decrypt'])
     }
     // If the key is a string, then import it as json web key
-    else if (_.isPlainObject(privKey)) {
+    else if (isPlainObject(privKey)) {
         privateKey = await crypto.importKey('jwk', privKey, algorithm, true, ['decrypt'])
     }
     // Decrypt the data and return it

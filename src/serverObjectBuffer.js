@@ -17,24 +17,24 @@
 // IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import _ from 'lodash'
+import { clone, isEqual, assign } from 'lodash'
 import { reactive, computed, readonly } from 'vue'
 
 export const useDataBuffer = function(initialData){
 
-  const buffer = reactive(_.clone(initialData || {}))
-  const data = reactive(_.clone(initialData || {}))
+  const buffer = reactive(clone(initialData || {}))
+  const data = reactive(clone(initialData || {}))
 
   //Modified tracks whether the buffer has been modified from the data
-  const modified = computed(() => !_.isEqual(buffer, data))
+  const modified = computed(() => !isEqual(buffer, data))
   const apply = (newData) => {
     // Apply the new data to the buffer
-    _.assign(data, newData);
+    assign(data, newData);
     // Revert the buffer to the resource data
-    _.assign(buffer, data)
+    assign(buffer, data)
   }
 
-  const revert = () => _.assign(buffer, data)
+  const revert = () => assign(buffer, data)
 
   return {
     buffer,

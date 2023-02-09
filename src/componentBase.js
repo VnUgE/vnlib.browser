@@ -18,14 +18,14 @@
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
-import _ from 'lodash'
+import { isEmpty, isNil, isArray, defaultTo, isEqual } from 'lodash'
 import { useRoute, useRouter } from 'vue-router'
 import { computed, reactive, readonly, ref, watch } from 'vue'
 import { useSession } from './session'
 import { useFormToaster, useToaster } from './toast.js'
 import { useAxios } from './axios'
 import { notify } from '@kyvg/vue3-notification'
-import { useConfirmDialog, watchThrottled } from "@vueuse/core";
+import { useConfirmDialog, useSessionStorage, watchThrottled } from "@vueuse/core";
 
 //const validationTitle = 'Please verify your form'
 const formMessageId = 'form-message'
@@ -36,6 +36,8 @@ const _toaster = useToaster()
 const { error } = useFormToaster()
 const _message = ref('')
 const _waiting = ref(false)
+//Last page store in session for page guard
+const lastPage = useSessionStorage('lastPage', null)
 
 const notifyError = function (title, text = '') {
   error({
@@ -60,7 +62,7 @@ const validate = async function (v$) {
 }
 
 //Clear the form message when message is cleared
-watch(_message, () => !_.isEmpty(_message.value) ? notifyError(_message.value, '') : notify.close(formMessageId))
+watch(_message, () => !isEmpty(_message.value) ? notifyError(_message.value, '') : notify.close(formMessageId))
 
 /** 
  * When called, configures the component to 
@@ -75,8 +77,10 @@ export const usePageGuard = function () {
   const route = useRoute() 
 
   const goToLogin = () =>{
+    //Store last route in session
+    lastPage.value = route.fullPath
     //Save the last page to return to after login
-    push({ name: 'Login', query: { from: route.path } })
+    push({ name: 'Login' })
   }
 
   // Initial check for logged in to guard the page
@@ -86,6 +90,31 @@ export const usePageGuard = function () {
   // setup watcher on session login value
   // If the login value changes to false, redirect to login page
   watch(loggedIn, value => !value ? goToLogin() : null)
+}
+
+/**
+ * Gets the configuration for the last page the user was on 
+ * when the page guard was called. This is used to return to the
+ * last page after login.
+ * @returns { lastPage: Readonly<Ref<string>>, gotoLastPage: Function }
+ */
+export const useLastPage = function () {
+  const { push } = useRouter()
+  return{
+    /**
+     * The last page stored in session when the page 
+     * guard was called. This is used to return to the
+     * last page after login.
+     */
+    lastPage: readonly(lastPage),
+    gotoLastPage: () => {
+      if(lastPage.value){
+        push(lastPage.value)
+        //Clear last page
+        lastPage.value = null
+      }
+    }
+  }
 }
 
 /**
@@ -111,7 +140,7 @@ export const apiCall = async function(asyncFunc, message = undefined){
   } catch (errMsg) {
     console.error(errMsg)
     // See if the error has an axios response
-    if (_.isNil(errMsg.response)) {
+    if (isNil(errMsg.response)) {
       if (errMsg.message === 'Network Error') {
         notifyError('Please check your internet connection')
       } else {
@@ -122,13 +151,13 @@ export const apiCall = async function(asyncFunc, message = undefined){
     // Axios error message
     const response = errMsg.response
     const errors = response?.data?.errors
-    const hasErrors = _.isArray(errors) && errors.length > 0
+    const hasErrors = isArray(errors) && errors.length > 0
     const SetMessageWithDefault = (message) => {
       if (hasErrors) {
-        const title = 'Please verify your ' + _.defaultTo(errors[0].property, 'form')
+        const title = 'Please verify your ' + defaultTo(errors[0].property, 'form')
         notifyError(title, errors[0].message)
       } else {
-        notifyError(_.defaultTo(response?.data?.result, message))
+        notifyError(defaultTo(response?.data?.result, message))
       }
     }
     switch (response.status) {
@@ -260,7 +289,7 @@ export const usePassConfirm = (function () {
         catch (err) {
           const response = err.response
           // If the error is not password related, then hide the prompt
-          if (_.isEqual(response?.status, 401)) {
+          if (isEqual(response?.status, 401)) {
             apidc.toaster.form.error({
               title: response.data.result
             })

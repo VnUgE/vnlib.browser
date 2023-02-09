@@ -18,7 +18,7 @@
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
-import _ from 'lodash'
+import { assign } from 'lodash'
 import { notify } from '@kyvg/vue3-notification'
 
 const generalConfig = Object.freeze({
@@ -36,17 +36,17 @@ const formConfig = Object.freeze({
 const general = {
   success(config) {
     config.type = 'success'
-    _.assign(config, generalConfig)
+    assign(config, generalConfig)
     notify(config)
   },
   error(config) {
     config.type = 'error'
-    _.assign(config, generalConfig)
+    assign(config, generalConfig)
     notify(config)
   },
   info(config) {
     config.type = 'info'
-    _.assign(config, generalConfig)
+    assign(config, generalConfig)
     notify(config)
   }
 }
@@ -54,17 +54,17 @@ const general = {
 const form = {
   success(config) {
     config.type = 'success'
-    _.assign(config, formConfig)
+    assign(config, formConfig)
     notify(config)
   },
   error(config) {
     config.type = 'error'
-    _.assign(config, formConfig)
+    assign(config, formConfig)
     notify(config)
   },
   info(config) {
     config.type = 'info'
-    _.assign(config, formConfig)
+    assign(config, formConfig)
     notify(config)
   }
 }

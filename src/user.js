@@ -17,7 +17,7 @@
 // IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import _ from 'lodash'
+import { toSafeInteger, toInteger, isNil, defaultTo } from 'lodash'
 import { useAxios } from './axios'
 import { useSession, storeLoginCredentials, regenerateCredentials } from './session'
 import { computed, watch } from 'vue'
@@ -47,7 +47,7 @@ const userData = useLocalStorage(import.meta.env.VITE_USER_DATA_KEY, {})
 // Ref to session poll interval
 const pollRate = computed({
   get: () => userData.value.pollRate || 0,
-  set: value => userData.value.pollRate = _.toSafeInteger(value)
+  set: value => userData.value.pollRate = toSafeInteger(value)
 })
 
 const userName = computed(() => userData.value.userName)
@@ -93,11 +93,11 @@ const util = {
               const response = await post(paths.mfa_totp, {
                 //Pass raw upgrade message back to server as its signed
                 upgrade: mfaMessage,
-                code: _.toInteger(totpCode),
+                code: toInteger(totpCode),
                 localtime: new Date().toISOString()
               })
               // If the server returned a token, complete the login
-              if (response.data.success && !_.isNil(response.data.token)) {
+              if (response.data.success && !isNil(response.data.token)) {
                 await loginMessage.Finalize(response)
               }
               return response
@@ -123,7 +123,11 @@ const util = {
   },
   heartbeat: async function () {
     //Invoke the keepalive endpoint
-    return await post(paths.keepAlive)
+    const result = await post(paths.keepAlive)
+    if(result.data.token){
+      //If the server returned a token, store it
+      await storeLoginCredentials(result.data)
+    }
   },
 }
 
@@ -175,7 +179,7 @@ export const useUser = function () {
     // Check the response
     if (response.status === 200 && response.data.success === true) {
       // If the server returned a token, complete the login
-      if (!_.isNil(response.data.token)) {
+      if (!isNil(response.data.token)) {
         await preppedLogin.Finalize(response)
       }
       // Check for a two factor auth mesage
@@ -193,7 +197,7 @@ export const useUser = function () {
     // Get the user's profile from the profile endpoint
     const response = await get(paths.profile)
     // Set username ref
-    userData.value.userName = _.defaultTo(response.data.email, userData.value.userName)
+    userData.value.userName = defaultTo(response.data.email, userData.value.userName)
     // return response data
     return response.data
   }

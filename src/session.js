@@ -18,7 +18,7 @@
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
-import _ from 'lodash'
+import { defer, toSafeInteger, isEqual, isNil, isEmpty } from 'lodash'
 import { ref, readonly, watch, computed } from 'vue'
 import { useLocalStorage } from '@vueuse/core'
 import { useCookies } from '@vueuse/integrations/useCookies'
@@ -43,13 +43,13 @@ const liCookieValue = (function () {
   const cookieref = ref(get())
   let lastValue = get()
   //Watch for changes to the cookie and update the ref
-  window.setInterval(() => _.defer(() => {
+  window.setInterval(() => defer(() => {
     const newValue = get()
-    if (!_.isEqual(newValue, lastValue)) {
+    if (!isEqual(newValue, lastValue)) {
       lastValue = cookieref.value = newValue
     }
   }), 100)
-  return computed(() => _.toSafeInteger(cookieref.value))
+  return computed(() => toSafeInteger(cookieref.value))
 })()
 
 const _pwChallenge = ref(null)
@@ -59,12 +59,12 @@ const sessionData = useLocalStorage(import.meta.env.VITE_SESSION_KEY, {})
 const _keyStore = useLocalStorage(import.meta.env.VITE_BROWSER_CREDS_KEY, {})
 // Reactive referrence to logged in to allow reactive components
 const loggedInRef = computed(() => {
-  const tokenVal = !_.isEmpty(sessionData.value.token)
+  const tokenVal = !isEmpty(sessionData.value.token)
   return liCookieValue.value > 0 && tokenVal
 })
 
 // Watch for changes to logged-in ref
-watch(loggedInRef, () => _.defer(() => {
+watch(loggedInRef, () => defer(() => {
   if (!loggedInRef.value) {
     sessionData.value.token = null
     _pwChallenge.value = null
@@ -76,7 +76,7 @@ const util = {
   
   checkAndSetClientSecret: async function () {
     // See if the client keypair is set
-    if (_.isNil(_keyStore.value.private) || _.isNil(_keyStore.value.public)) {
+    if (isNil(_keyStore.value.private) || isNil(_keyStore.value.public)) {
       // If not, generate a new key pair
       const keypair = await crypto.generateKey(RSA_ALG, true, ['encrypt', 'decrypt'])
       // Store the private key
@@ -87,7 +87,7 @@ const util = {
       _keyStore.value.public = ArrayBuffToBase64(pub)
     }
     // Check browser id
-    if (_.isNil(sessionData.value.bid)) {
+    if (isNil(sessionData.value.bid)) {
       // generate a new random secret and store it
       const randBuffer = new Uint8Array(BID_SIZE)
       // generate random id
@@ -147,7 +147,7 @@ export const storeLoginCredentials = async function(response){
   // Compute the login token
   await util.computeToken(response.token)
   // If password token is set, set it
-  if (!_.isNil(response.pwtoken)) {
+  if (!isNil(response.pwtoken)) {
     await util.storePwSecret(response.pwtoken)
   }
 }
@@ -232,7 +232,7 @@ export const useSession = function () {
     /**
      * Gets a value that inidcates if the current session belongs to a local user account, or an externally authenticated account.
      */
-    isLocalAccount: computed(() => liCookieValue.value === 1 && !_.isNil(sessionData.value.pwsecret)),
+    isLocalAccount: computed(() => liCookieValue.value === 1 && !isNil(sessionData.value.pwsecret)),
 
     /**
      * Gets the stored browser id for the current session.
