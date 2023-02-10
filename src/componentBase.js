@@ -25,7 +25,7 @@ import { useSession } from './session'
 import { useFormToaster, useToaster } from './toast.js'
 import { useAxios } from './axios'
 import { notify } from '@kyvg/vue3-notification'
-import { useConfirmDialog, useSessionStorage, watchThrottled } from "@vueuse/core";
+import { useConfirmDialog, useSessionStorage, watchThrottled, tryOnMounted } from "@vueuse/core";
 
 //const validationTitle = 'Please verify your form'
 const formMessageId = 'form-message'
@@ -358,4 +358,27 @@ export const useScrollOnRouteChange = function(){
   //Watch throttled and scroll when route changes
   watchThrottled(route, () => window.scrollTo(0, 0), {immediate: true, deep: true, throttle:100})
 
+}
+
+const _title = ref('')
+
+/**
+ * Sets the document title
+ * @returns {Object} { title: String, setTitle: Function }
+ * @example //Title is reactive
+ * const { title, setTitle } = useTitle()
+ * setTitle('My Title') //Manually set the title
+ * setTitle('') //Manually clear the title
+ */
+export const useTitle = function(title = null){
+  
+  const setTitle = title => _title.value = title
+  
+  //Set title on mount
+  tryOnMounted(() => setTitle(title))
+
+  return {
+    title: readonly(_title),
+    setTitle
+  }
 }
