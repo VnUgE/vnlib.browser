@@ -202,10 +202,11 @@ export const useUser = function () {
     return response.data
   }
 
-  const resetPassword = async function(currentPass, newPass) {
+  const resetPassword = async function(currentPass, newPass, args) {
     return await post(paths.reset, {
       current: currentPass,
-      new_password: newPass
+      new_password: newPass,
+      ...args
     })
   }
   
@@ -239,6 +240,12 @@ export const useUser = function () {
     * @returns {Promise<Object>} The user's data
     */
     getProfile,
+    /**
+     * Resets the user's password
+     * @param {String} currentPass The current password
+     * @param {String} newPass The new password
+     * @param {Object} args Additional arguments to pass to the server
+     */
     resetPassword,
     /**
    * Prepares a login message to send to the server for authentication.
