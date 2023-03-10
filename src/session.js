@@ -1,4 +1,4 @@
-// Copyright (c) 2022 Vaughn Nugent
+// Copyright (c) 2023 Vaughn Nugent
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy of
 // this software and associated documentation files (the "Software"), to deal in
@@ -22,10 +22,13 @@ import { defer, toSafeInteger, isEqual, isNil, isEmpty } from 'lodash'
 import { ref, readonly, watch, computed } from 'vue'
 import { useLocalStorage } from '@vueuse/core'
 import { useCookies } from '@vueuse/integrations/useCookies'
-import { ArrayBuffToBase64, ArrayToHexString } from './binhelpers'
-import crypto, { hmacSignAsync, decryptAsync } from './webcrypto'
+import { ArrayBuffToBase64, Base64ToUint8Array } from './binhelpers'
+import crypto, { hmacSignAsync, decryptAsync, getRandomHex } from './webcrypto'
+import { SignJWT, importPKCS8 } from 'jose'
+import { debugLog } from './util'
 
 const BID_SIZE = 32
+const TOKEN_SIG_ALG = "ES256" //server supports es256 mode
 
 // Basic RSA config to allow encryption and decryption of data
 const RSA_ALG = Object.freeze({
@@ -54,9 +57,9 @@ const liCookieValue = (function () {
 
 const _pwChallenge = ref(null)
 // Create a new proxy for the login token
-const sessionData = useLocalStorage(import.meta.env.VITE_SESSION_KEY, {})
+const sessionData = useLocalStorage(import.meta.env.VITE_SESSION_KEY ?? "_vn-session", {})
 // Create a new proxy for the user's private/public storage
-const _keyStore = useLocalStorage(import.meta.env.VITE_BROWSER_CREDS_KEY, {})
+const _keyStore = useLocalStorage(import.meta.env.VITE_BROWSER_CREDS_KEY ?? "_vn-keys", {})
 // Reactive referrence to logged in to allow reactive components
 const loggedInRef = computed(() => {
   const tokenVal = !isEmpty(sessionData.value.token)
@@ -80,20 +83,21 @@ const util = {
       // If not, generate a new key pair
       const keypair = await crypto.generateKey(RSA_ALG, true, ['encrypt', 'decrypt'])
       // Store the private key
-      _keyStore.value.private = await crypto.exportKey('jwk', keypair.privateKey)
+      const privKey = await crypto.exportKey('pkcs8', keypair.privateKey)
+      _keyStore.value.private = ArrayBuffToBase64(privKey)
       // Store the public key in spki format for the server to accept
       const pub = await crypto.exportKey('spki', keypair.publicKey)
       // Convert public key to base64
       _keyStore.value.public = ArrayBuffToBase64(pub)
+
+      debugLog("Generated new client keypair, none were found")
     }
     // Check browser id
     if (isNil(sessionData.value.bid)) {
       // generate a new random secret and store it
-      const randBuffer = new Uint8Array(BID_SIZE)
-      // generate random id
-      window.crypto.getRandomValues(randBuffer)
-      // Store the id in the session as hex
-      sessionData.value.bid = ArrayToHexString(randBuffer)
+      sessionData.value.bid = getRandomHex(BID_SIZE)
+
+      debugLog("Generated new browser id, none was found")
     }
   },  
   /**
@@ -130,15 +134,55 @@ const util = {
   * @returns Promise<void> A promise that completes when the session is configured
   */
   computeToken: async function (serverToken) {
-    // The server token is a base64 encoded secret that is encrypted with the client's public key
-    // Decrypt the server token buffer
+    /*
+     * The server sends an ecdsa private key, encrypted 
+     * using our public key. Need to decrypt it 
+     * and use it to sign messages to the server.
+     */
     const decrypted = await decryptData(serverToken)
-    // Hash the decrypted data
-    const hashed = await crypto.digest({ name: 'SHA-384' }, decrypted)
-    // Convert the hash to a base64 string
-    sessionData.value.token = ArrayBuffToBase64(hashed)
+    // Convert the hash to a base64 string and store it
+    sessionData.value.token = ArrayBuffToBase64(decrypted)
   }, 
+
+  /**
+   * Gets the stored private key for the current session
+   * and converts it to a uint8array
+   */
+  getOTPPrivateKey: async function () {
+    const stored = sessionData.value.token
+
+    //Recover the private key in PEM format
+    return stored ? await importPKCS8(`-----BEGIN PRIVATE KEY-----\n${stored}\n-----END PRIVATE KEY-----`, TOKEN_SIG_ALG) : null
+  },
+
+  /**
+   * Computes a one time key for a fetch request security header
+   * It is a signed jwt token that is valid for a short period of time
+   */
+  generateOneTimeToken: async function () {
+    //Sign with the private key
+    const privKey = await util.getOTPPrivateKey()
+
+    if(!privKey){
+      return null;
+    }
+
+    //Inint jwt with a random nonce
+    const nonce = getRandomHex(16);
+
+    const jwt = new SignJWT({ 'nonce': nonce })
+    //Set alg
+    jwt.setProtectedHeader({ alg: TOKEN_SIG_ALG })
+    //Iat is the only required claim at the current time utc
+    .setIssuedAt()
+   
+    //Sign the jwt
+    const signedJWT = await jwt.sign(privKey)
+
+    return signedJWT;
+  }
 }
+
 
 /**
  * Stores the users session credentials from a server login event
@@ -159,8 +203,11 @@ export const storeLoginCredentials = async function(response){
  * @returns A promise that completes when the decryption is complete
  */
 const decryptData = async function (data) {
+  const keyData = Base64ToUint8Array(_keyStore.value.private)
+  //import private key as pkcs8
+  const privKey = await crypto.importKey('pkcs8', keyData, RSA_ALG, false, ['decrypt'])
   // Decrypt the data and return it
-  return await decryptAsync(RSA_ALG, _keyStore.value.private, data, false)
+  return await decryptAsync(RSA_ALG, privKey, data, false)
 }
 
 /**
@@ -204,9 +251,10 @@ const passwordChallenge = (function(){
  */
 export const useSessionUtils = function () {
   return{
-    decryptAndHash, 
+    decryptAndHash,
     decryptData,
     passwordChallenge,
+    generateOneTimeKey : util.generateOneTimeToken,
   }
 }
 
@@ -224,15 +272,11 @@ export const useSession = function () {
      * Gets a value that indicates if the session is considered logged in.
      */
     loggedIn: readonly(loggedInRef),
-    /**
-     * Gets the curent base64 login token.
-     */
-    token: computed(() => sessionData.value.token),
 
     /**
      * Gets a value that inidcates if the current session belongs to a local user account, or an externally authenticated account.
      */
-    isLocalAccount: computed(() => liCookieValue.value === 1 && !isNil(sessionData.value.pwsecret)),
+    isLocalAccount: computed(() => liCookieValue.value === 1),
 
     /**
      * Gets the stored browser id for the current session.

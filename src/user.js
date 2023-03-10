@@ -1,4 +1,4 @@
-// Copyright (c) 2022 Vaughn Nugent
+// Copyright (c) 2023 Vaughn Nugent
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy of
 // this software and associated documentation files (the "Software"), to deal in
@@ -22,7 +22,8 @@ import { useAxios } from './axios'
 import { useSession, storeLoginCredentials, regenerateCredentials } from './session'
 import { computed, watch } from 'vue'
 import { useIntervalFn, useLocalStorage } from '@vueuse/core'
-import { useJwt } from '@vueuse/integrations/useJwt'
+import { decodeJwt } from 'jose'
+import { debugLog } from './util'
 
 const getPath = path => `${import.meta.env.VITE_ACCOUNTS_BASE_PATH}${path}`
 
@@ -78,11 +79,11 @@ if (!loggedIn.value) {
 
 const util = {
   processMfa:function (mfaMessage, loginMessage) {
-    //Mfa message is a jwt, decode it
-    const { payload } = useJwt(mfaMessage)
+    //Mfa message is a jwt, decode it (unsecure decode)
+    const mfa = decodeJwt(mfaMessage)
     
-    const mfa = payload.value
-    
+    debugLog(mfa)
+
     switch (mfa.type) {
       case 'totp':
         {
@@ -125,6 +126,7 @@ const util = {
     //Invoke the keepalive endpoint
     const result = await post(paths.keepAlive)
     if(result.data.token){
+      debugLog("Heartbeat returned a new token, regenerating credentials...")
       //If the server returned a token, store it
       await storeLoginCredentials(result.data)
     }
@@ -148,7 +150,7 @@ export const useUser = function () {
       clientid: browserId.value,
       /**
        * Prepares the user's session to be logged in with the new context
-       * @param {String} serverToken The server-side salt used to generate the login hash
+       * @param {String} data The server response message to decode
        */
       async Finalize({ data }) {
         // Finalize the login with the session

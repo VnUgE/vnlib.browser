@@ -1,4 +1,4 @@
-// Copyright (c) 2022 Vaughn Nugent
+// Copyright (c) 2023 Vaughn Nugent
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy of
 // this software and associated documentation files (the "Software"), to deal in
@@ -19,9 +19,9 @@
 
 
 import { isString, isArrayBuffer, isPlainObject } from 'lodash';
-import { ArrayBuffToBase64, Base64ToUint8Array } from './binhelpers';
+import { ArrayBuffToBase64, Base64ToUint8Array, ArrayToHexString } from './binhelpers';
 
-const crypto = window.crypto.subtle
+const crypto = window?.crypto?.subtle
 
 /**
  * Signs the dataBuffer using the specified key and hmac algorithm by its name eg. 'SHA-256'
@@ -57,8 +57,8 @@ export const hmacSignAsync = async function (keyBuffer, dataBuffer, alg, toBase6
 export const decryptAsync = async function (algorithm, privKey, data, toBase64 = false) {
       // Check data argument type and decode if needed
     let dataBuffer = isString(data) ? Base64ToUint8Array(data) : data
-    
-    let privateKey = null
+
+    let privateKey = privKey
     // Check key argument type
     if (isString(privKey)) {
         privateKey = privKey
@@ -74,6 +74,15 @@ export const decryptAsync = async function (algorithm, privKey, data, toBase64 =
     // Decrypt the data and return it
     const decrypted = await crypto.decrypt(algorithm, privateKey, dataBuffer)
     return toBase64 ? ArrayBuffToBase64(decrypted) : decrypted
+}
+
+export const getRandomHex = function (size){
+    // generate a new random secret and store it
+    const randBuffer = new Uint8Array(size)
+    // generate random id directly on the window.crypto object
+    window.crypto.getRandomValues(randBuffer)
+    // Store the id in the session as hex
+    return ArrayToHexString(randBuffer)
 }
 
 //default export subtle crypto 

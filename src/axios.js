@@ -1,4 +1,4 @@
-// Copyright (c) 2022 Vaughn Nugent
+// Copyright (c) 2023 Vaughn Nugent
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy of
 // this software and associated documentation files (the "Software"), to deal in
@@ -18,13 +18,27 @@
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
-
 import axios from 'axios'
-import { useSession } from './session'
+import { ref, watch } from 'vue'
+import { useSession, useSessionUtils } from './session'
+import { useIntervalFn } from '@vueuse/core'
 
 export const useAxios = (function () {
     //Get session to access the token and logged in status
-    const { loggedIn, token } = useSession()
+    const { loggedIn } = useSession()
+    const { generateOneTimeKey } = useSessionUtils()
+
+    const tokenCache = new ref(null)
+
+    //Regen an otp every 5 seconds, it may be null if no token is set
+    useIntervalFn(async () => tokenCache.value = await generateOneTimeKey(), 2000)
+
+    //If the user logs in, generate a new token immediately
+    watch(loggedIn, async (value) =>{
+        if(value) {
+            tokenCache.value = await generateOneTimeKey()
+        }
+    })
 
     //Init axios config
     const config = {
@@ -39,8 +53,8 @@ export const useAxios = (function () {
     _axios.interceptors.request.use(function (config) {
         // See if the current session is logged in
         if (loggedIn.value) {
-            // Add the token to the request
-            config.headers[import.meta.env.VITE_WEB_TOKEN_HEADER || "X-Web-Token"] = token.value
+            // Get an otp for the request
+            config.headers[import.meta.env.VITE_WEB_TOKEN_HEADER || "X-Web-Token"] = tokenCache.value
         }
         // Return the config
         return config

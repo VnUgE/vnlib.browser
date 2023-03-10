@@ -357,7 +357,6 @@ export const useScrollOnRouteChange = function(){
 
   //Watch throttled and scroll when route changes
   watchThrottled(route, () => window.scrollTo(0, 0), {immediate: true, deep: true, throttle:100})
-
 }
 
 const _title = ref('')

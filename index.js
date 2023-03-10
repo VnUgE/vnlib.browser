@@ -1,4 +1,4 @@
-// Copyright (c) 2022 Vaughn Nugent
+// Copyright (c) 2023 Vaughn Nugent
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy of
 // this software and associated documentation files (the "Software"), to deal in
@@ -24,5 +24,6 @@ export * from './src/session'
 export * from './src/user'
 export * from './src/binhelpers'
 export * from './src/componentBase'
-export * from './src/Toast'
+export * from './src/toast'
 export * from './src/serverObjectBuffer'
+export * from './src/util'
