@@ -28,18 +28,6 @@ export const useAxios = (function () {
     const { loggedIn } = useSession()
     const { generateOneTimeKey } = useSessionUtils()
 
-    const tokenCache = new ref(null)
-
-    //Regen an otp every 5 seconds, it may be null if no token is set
-    useIntervalFn(async () => tokenCache.value = await generateOneTimeKey(), 2000)
-
-    //If the user logs in, generate a new token immediately
-    watch(loggedIn, async (value) =>{
-        if(value) {
-            tokenCache.value = await generateOneTimeKey()
-        }
-    })
-
     //Init axios config
     const config = {
         baseURL: import.meta.env.VITE_API_URL || '/',
@@ -50,11 +38,11 @@ export const useAxios = (function () {
     const _axios = axios.create(config)
 
     //Add request interceptor to add the token to the request
-    _axios.interceptors.request.use(function (config) {
+    _axios.interceptors.request.use(async (config) => {
         // See if the current session is logged in
         if (loggedIn.value) {
             // Get an otp for the request
-            config.headers[import.meta.env.VITE_WEB_TOKEN_HEADER || "X-Web-Token"] = tokenCache.value
+            config.headers[import.meta.env.VITE_WEB_TOKEN_HEADER || "X-Web-Token"] = await generateOneTimeKey()
         }
         // Return the config
         return config

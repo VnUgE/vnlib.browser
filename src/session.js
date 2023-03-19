@@ -28,7 +28,7 @@ import { SignJWT, importPKCS8 } from 'jose'
 import { debugLog } from './util'
 
 const BID_SIZE = 32
-const TOKEN_SIG_ALG = "ES256" //server supports es256 mode
+const TOKEN_SIG_ALG = "HS256" //server supports HS256 mode
 
 // Basic RSA config to allow encryption and decryption of data
 const RSA_ALG = Object.freeze({
@@ -148,11 +148,11 @@ const util = {
    * Gets the stored private key for the current session
    * and converts it to a uint8array
    */
-  getOTPPrivateKey: async function () {
+  getOTPPrivateKey: function () {
     const stored = sessionData.value.token
 
-    //Recover the private key in PEM format
-    return stored ? await importPKCS8(`-----BEGIN PRIVATE KEY-----\n${stored}\n-----END PRIVATE KEY-----`, TOKEN_SIG_ALG) : null
+    //Recover the shared base64 key 
+    return stored ? Base64ToUint8Array(stored) : null
   },
 
   /**
@@ -161,9 +161,9 @@ const util = {
    */
   generateOneTimeToken: async function () {
     //Sign with the private key
-    const privKey = await util.getOTPPrivateKey()
+    const sharedKey = util.getOTPPrivateKey()
 
-    if(!privKey){
+    if (!sharedKey){
       return null;
     }
 
@@ -177,7 +177,7 @@ const util = {
     .setIssuedAt()
    
     //Sign the jwt
-    const signedJWT = await jwt.sign(privKey)
+    const signedJWT = await jwt.sign(sharedKey)
 
     return signedJWT;
   }

@@ -1,6 +1,6 @@
 {
   "name": "@vnuge/vnlib.browser",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "VNLib browser client base library for a Vue3 w/ VueUse web application.",
   "main": "index.js",
   "scripts": {},
