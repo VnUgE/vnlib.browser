@@ -1,4 +1,4 @@
-// Copyright (c) 2022 Vaughn Nugent
+// Copyright (c) 2023 Vaughn Nugent
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy of
 // this software and associated documentation files (the "Software"), to deal in
@@ -24,7 +24,6 @@ import { computed, reactive, readonly, ref, watch } from 'vue'
 import { useSession } from './session'
 import { useFormToaster, useToaster } from './toast.js'
 import { useAxios } from './axios'
-import { notify } from '@kyvg/vue3-notification'
 import { useConfirmDialog, useSessionStorage, watchThrottled, tryOnMounted } from "@vueuse/core";
 
 //const validationTitle = 'Please verify your form'
@@ -62,7 +61,7 @@ const validate = async function (v$) {
 }
 
 //Clear the form message when message is cleared
-watch(_message, () => !isEmpty(_message.value) ? notifyError(_message.value, '') : notify.close(formMessageId))
+watch(_message, () => !isEmpty(_message.value) ? notifyError(_message.value, '') : _toaster.close(formMessageId))
 
 /** 
  * When called, configures the component to 

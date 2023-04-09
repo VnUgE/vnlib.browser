@@ -1,4 +1,4 @@
-// Copyright (c) 2022 Vaughn Nugent
+// Copyright (c) 2023 Vaughn Nugent
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy of
 // this software and associated documentation files (the "Software"), to deal in
@@ -19,7 +19,16 @@
 
 
 import { assign } from 'lodash'
-import { notify } from '@kyvg/vue3-notification'
+import { ref } from 'vue'
+
+// The program handler for the notification
+const _handler = ref(null)
+
+//notify handler
+const notify = (config) => _handler.value?.notify ? _handler.value.notify(config) : console.error('No notification handler has been set', config)
+
+//Close handler
+const close = (id) => _handler.value?.close ? _handler.value.close(id) : null
 
 const generalConfig = Object.freeze({
   group: 'general'
@@ -70,6 +79,13 @@ const form = {
 }
 
 /**
+ * Configures the notification handler. 
+ * @param {*} notifier The method to call when a notification is to be displayed
+ * @returns The notifier
+ */
+export const configureNotifier = (notifier) => _handler.value = notifier
+
+/**
  * Gets the default toaster for general notifications
  * and the form toaster for form notifications
  * @returns {Object} The toaster contianer object
@@ -77,9 +93,11 @@ const form = {
 export const useToaster = function(){
   return{
     general,
-    form
+    form,
+    close
   }
 }
+
 /**
  * Gets the default toaster for from notifications
  */

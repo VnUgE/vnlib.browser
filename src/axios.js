@@ -19,9 +19,7 @@
 
 
 import axios from 'axios'
-import { ref, watch } from 'vue'
 import { useSession, useSessionUtils } from './session'
-import { useIntervalFn } from '@vueuse/core'
 
 export const useAxios = (function () {
     //Get session to access the token and logged in status

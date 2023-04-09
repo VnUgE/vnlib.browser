@@ -255,6 +255,11 @@ export const useUser = function () {
    * the response from the server.
    * @returns The prepared login message
    */
-    prepareLogin
+    prepareLogin,
+
+     /**
+     * Manaully invoke the client/server heartbeat function
+     */
+    heartBeat: util.heartbeat
   }
 }

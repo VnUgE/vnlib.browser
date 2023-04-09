@@ -21,10 +21,10 @@
 import { defer, toSafeInteger, isEqual, isNil, isEmpty } from 'lodash'
 import { ref, readonly, watch, computed } from 'vue'
 import { useLocalStorage } from '@vueuse/core'
-import { useCookies } from '@vueuse/integrations/useCookies'
+import Cookies from 'universal-cookie'
 import { ArrayBuffToBase64, Base64ToUint8Array } from './binhelpers'
 import crypto, { hmacSignAsync, decryptAsync, getRandomHex } from './webcrypto'
-import { SignJWT, importPKCS8 } from 'jose'
+import { SignJWT } from 'jose'
 import { debugLog } from './util'
 
 const BID_SIZE = 32
@@ -40,19 +40,26 @@ const RSA_ALG = Object.freeze({
 
 //reactive li cookie
 const liCookieValue = (function () {
-  const _cookies = useCookies([], { doNotParse: true, autoUpdateDependencies: true })
-  
+
+  //application disabled the cookie value
+  if (import.meta.env.VITE_DISABLE_COOKIE_VALUE != undefined){
+    //Return the value 
+    return computed(() => import.meta.env.VITE_DISABLE_COOKIE_VALUE)
+  }
+
+  const _cookies = new Cookies();
+
   const get = () => _cookies.get(import.meta.env.VITE_LOGIN_COOKIE_ID || 'li')
   const cookieref = ref(get())
   let lastValue = get()
-  //Watch for changes to the cookie and update the ref
+    //Watch for changes to the cookie and update the ref
   window.setInterval(() => defer(() => {
-    const newValue = get()
-    if (!isEqual(newValue, lastValue)) {
-      lastValue = cookieref.value = newValue
-    }
-  }), 100)
-  return computed(() => toSafeInteger(cookieref.value))
+      const newValue = get()
+      if (!isEqual(newValue, lastValue)) {
+        lastValue = cookieref.value = newValue
+      }
+    }), 100)
+  return computed(() => toSafeInteger(cookieref.value)) 
 })()
 
 const _pwChallenge = ref(null)
@@ -66,14 +73,6 @@ const loggedInRef = computed(() => {
   return liCookieValue.value > 0 && tokenVal
 })
 
-// Watch for changes to logged-in ref
-watch(loggedInRef, () => defer(() => {
-  if (!loggedInRef.value) {
-    sessionData.value.token = null
-    _pwChallenge.value = null
-    sessionData.value.pwsecret = null
-  }
-}))
 
 const util = {
   
@@ -180,9 +179,21 @@ const util = {
     const signedJWT = await jwt.sign(sharedKey)
 
     return signedJWT;
+  },
+
+  /**
+   * Clears the login state from storage,
+   *  effectively destroying the session
+   */
+  clearLoginState: function () {
+    sessionData.value.token = null
+    sessionData.value.pwsecret = null
+    _pwChallenge.value = null
   }
 }
 
+// Watch for changes to logged-in ref and if it changes to false, clear the login state
+watch(loggedInRef, () => defer(() => !loggedInRef.value ? util.clearLoginState() : null))
 
 /**
  * Stores the users session credentials from a server login event
@@ -255,6 +266,7 @@ export const useSessionUtils = function () {
     decryptData,
     passwordChallenge,
     generateOneTimeKey : util.generateOneTimeToken,
+    clearLoginState: util.clearLoginState,
   }
 }
 
