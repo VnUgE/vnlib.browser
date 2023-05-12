@@ -7,11 +7,15 @@ This repo contains the client side JavaScript library for interacting with the V
 The simplest way to get started is to install the package as a archive via npm. 
 
 ``` bash
-npm install https://www.vaughnnugent.com/public/resources/software/releases/vnlib-browser/latest.tgz -O vnlib-browser.tgz
+npm install https://www.vaughnnugent.com/public/resources/software/releases/vnlib-browser/latest.tgz
 ```
 
-The latest version will always be available at *latest.tgz*
-Or via version number *v0.1.0.tgz*
+The latest version will always be available at *latest.tgz* 
+Or via version number ex: *v0.1.0.tgz*
+
+A sha384 sum may also be downloaded by appending *.sha384* to the end of the file name
+
+The package includes type definitions with some comments and more to come to assist usage.
 
 ## Configuring the global state
 
@@ -30,7 +34,7 @@ configureApi({
 })
 ```
 
-It is best to call this method at the start of your app, say in your main.js file. This method is deigned to be called at any time in your application to update your config. This is useful if you wish to have user-adjustable config, such as in web-extension context. 
+This method is designed to be called at any time in your application to update your config, however, it is probably best to call this method at the start of your app, say in your main.js file. This is useful if you wish to have user-adjustable config, such as in web-extension context. 
 
 **Note** Your code that calls `useAxios()` won't reflect the new *axios specific* config such as your baseURL, headers, etc., so you will need to call `useAxios()` again to capture the new global axios config.
 
@@ -48,7 +52,7 @@ Session session state info, session utilities, such as credential reading/updati
 
 ``` JavaScript
 import { useSession, useSessionUtils } from '@vnuge/vnlib.browser'
-
+//Get session properties
 const { loggedIn, isLocalAccount, browserId, publicKey } = useSession();
 const { KeyStore,
 	   checkAndSetCredentials,
@@ -74,7 +78,7 @@ const { userName,
         login,
         getProfile,
         resetPassword,
-        heartbeat } = useUser()
+        heartbeat } = useUser();
         
 //Configure the auto-heartbeat when logged in to update credentials
 const interval = useAutoHeartbeat(5 * 60 * 1000);
@@ -144,7 +148,7 @@ const close = () => {}   //called on close request
 configureNotifier({notify, close}); //set notifier
 ```
 
-Toasters are split into *form* and *general* toast type messages. Internal components only capture errors for you, and will only ever publish error messages to the form toaster. Two toaster concepts are used to allow for form-based messages, and general application messages, usually out of focus and a lower priority
+Toasters are split into *form* and *general* toast type messages. My modules currently only publish error messages for you, and will only ever publish them to the form toaster. Two toaster concepts are used to allow for form-based messages, and general application messages, usually out of focus and a lower priority
 
 ### apiCall
 
@@ -159,9 +163,11 @@ const response = await apiCall(async ({axios, toaster}) => {
 });
 ```
 
-The call to apiCall always returns, the result from the inner method call is returned only if the call was successful, otherwise the result is undefined. If an error occurred an error toaster notification is published.  
+The call to apiCall always returns, the result from the inner method call is returned only if the call was successful, otherwise the result is undefined. If an error occurred, an error is published as `setMessage(error_text, undefined)`. 
 
-This method is useful in applications that make server requests and want a unified and simple way to display errors to users. You may use this method to wrap any asynchronous operation that may throw.
+This method is useful in applications that make server requests and want a unified and simple way to display server errors to users. You may use this method to wrap any asynchronous operation that may throw.
+
+When an response error occurs, the `axiosResponse.data.result` property is read first, if it is not a string or is undefined, a default error message is displayed from its error status code as a fallback.
 
 ### useWait
 
@@ -269,7 +275,7 @@ useScrollOnRouteChange(); // thats all
 Usually you enable this in your top level element or your main file, this must be called after the router was loaded. 
 
 ### useMessage
-Message is a term used control error messages across operations in an application. By default the output of the message system writes error events to the formToaster system. It simplifies publishing and clearing error notifications through this library. You may the message system by calling `useMessage()`. 
+Message is a term used control error messages across operations in an application. By default the output of the message system writes error events to the formToaster system. It simplifies publishing and clearing error notifications throughout this library.
 
 ```JavaScript
 import { useMessage } from '@vnuge/vnlib.browser'
