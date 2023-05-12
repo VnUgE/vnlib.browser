@@ -1,4 +1,4 @@
-// Copyright (c) 2022 Vaughn Nugent
+// Copyright (c) 2023 Vaughn Nugent
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy of
 // this software and associated documentation files (the "Software"), to deal in
@@ -17,30 +17,43 @@
 // IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import { clone, isEqual, assign } from 'lodash'
-import { reactive, computed, readonly } from 'vue'
+import { IErrorNotifier } from "../toast";
 
-export const useDataBuffer = function(initialData){
-
-  const buffer = reactive(clone(initialData || {}))
-  const data = reactive(clone(initialData || {}))
-
-  //Modified tracks whether the buffer has been modified from the data
-  const modified = computed(() => !isEqual(buffer, data))
-  const apply = (newData) => {
-    // Apply the new data to the buffer
-    assign(data, newData);
-    // Revert the buffer to the resource data
-    assign(buffer, data)
-  }
-
-  const revert = () => assign(buffer, data)
-
-  return {
-    buffer,
-    data:readonly(data),
-    modified,
-    apply,
-    revert
-  }
+/**
+ * The message handler interface
+ */
+export interface IMessageHandler {
+    setMessage(title: string, text?: string): void;
+    clearMessage(): void;
+    onInput(): void;
 }
+
+const MessageHandler = (toaster: IErrorNotifier): IMessageHandler => {
+
+    const clearMessage = (): void => {
+        toaster.close()
+    }
+
+    const setMessage = (title: string, text = ''): void => {
+        //Setting a null value will also clear the message
+        if (!title) {
+            clearMessage();
+        }
+        else {
+            toaster.notifyError(title, text)
+        }
+    }
+
+    const onInput = clearMessage;
+
+    return {
+        setMessage,
+        clearMessage,
+        onInput
+    }
+}
+
+/**
+ * Gets the message state system for managing form error messages in a meaningful way
+ */
+export const useMessage = (toaster: IErrorNotifier) : IMessageHandler => MessageHandler(toaster);

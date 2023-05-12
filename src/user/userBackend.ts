@@ -17,13 +17,33 @@
 // IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+import { ISession, ISessionUtil } from "../session/types";
+import { IUserConfig } from "../types";
+import { createUserState } from "./userState";
+import { Endpoints, IUserBackend } from "./types";
 
-//VNLib export modules
-export * from './src/axios'
-export * from './src/session'
-export * from './src/user'
-export * from './src/binhelpers'
-export * from './src/componentBase'
-export * from './src/toast'
-export * from './src/serverObjectBuffer'
-export * from './src/util'
+export const createUserBackend = (config : IUserConfig, session : ISession, sessionUtil : ISessionUtil) : IUserBackend => {
+    const userState = createUserState(config);
+    
+    const getAxios = config.getAxios;
+
+    const getEndpoint = (endpoint: Endpoints) => {
+        const base = config.getAccountBasePath();
+        return `${base}/${endpoint}`;
+    }
+
+    const getPublcKey = () => session.publicKey.value;
+
+    const getBrowserId = () => session.browserId.value;
+
+    return { 
+        config,
+        session,
+        userState,
+        sessionUtil,
+        getAxios,
+        getEndpoint,
+        getPublcKey,
+        getBrowserId
+    };
+}

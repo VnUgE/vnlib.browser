@@ -17,94 +17,64 @@
 // IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+import { Ref, ref } from 'vue'
+import { createFormToaster } from './formToast'
+import { createGeneralToaster } from './generalToast'
+import { INotifier, IToaster, ToasterNotifier } from './types'
+export { INotifier, IErrorNotifier, createToaster as Toaster, IToaster } from './types'
 
-import { assign } from 'lodash'
-import { ref } from 'vue'
+export interface CombinedToaster {
+    readonly form: IToaster;
+    readonly general: IToaster;
+}
+
+class DefaultNotifier implements INotifier {
+    notify(config: any): void {
+        console.log(`Notification: ${config.title} - ${config.text}`)
+    }
+    close(id: string): void {
+        console.log(`Notification closed: ${id}`)
+    }
+}
+
+//Combined toaster impl
+const createCombinedToaster = (handler: Ref<INotifier>) : CombinedToaster => {
+    const form = createFormToaster(handler);
+    const general = createGeneralToaster(handler);
+    
+    const close = (id?: string) => {
+        form.close(id);
+        general.close(id);
+    }
+
+    return Object.freeze({ form, general, close });
+}
+
 
 // The program handler for the notification
-const _handler = ref(null)
-
-//notify handler
-const notify = (config) => _handler.value?.notify ? _handler.value.notify(config) : console.error('No notification handler has been set', config)
-
-//Close handler
-const close = (id) => _handler.value?.close ? _handler.value.close(id) : null
-
-const generalConfig = Object.freeze({
-  group: 'general'
-})
-const formConfig = Object.freeze({
-  group: 'form',
-  ignoreDuplicates: true,
-  // Froms only allow for one notification at a time
-  max: 1,
-  // Disable close on click
-  closeOnClick: false
-})
-
-const general = {
-  success(config) {
-    config.type = 'success'
-    assign(config, generalConfig)
-    notify(config)
-  },
-  error(config) {
-    config.type = 'error'
-    assign(config, generalConfig)
-    notify(config)
-  },
-  info(config) {
-    config.type = 'info'
-    assign(config, generalConfig)
-    notify(config)
-  }
-}
-
-const form = {
-  success(config) {
-    config.type = 'success'
-    assign(config, formConfig)
-    notify(config)
-  },
-  error(config) {
-    config.type = 'error'
-    assign(config, formConfig)
-    notify(config)
-  },
-  info(config) {
-    config.type = 'info'
-    assign(config, formConfig)
-    notify(config)
-  }
-}
+const _handler = ref<INotifier>(new DefaultNotifier())
 
 /**
  * Configures the notification handler. 
  * @param {*} notifier The method to call when a notification is to be displayed
  * @returns The notifier
  */
-export const configureNotifier = (notifier) => _handler.value = notifier
+export const configureNotifier = (notifier : INotifier) => _handler.value = notifier
 
 /**
  * Gets the default toaster for general notifications
  * and the form toaster for form notifications
  * @returns {Object} The toaster contianer object
  */
-export const useToaster = function(){
-  return{
-    general,
-    form,
-    close
-  }
-}
+export const useToaster = (): CombinedToaster => createCombinedToaster(_handler);
 
 /**
  * Gets the default toaster for from notifications
  */
-export const useFormToaster = () => form
+export const useFormToaster = (): ToasterNotifier => createFormToaster(_handler);
 
 /**
  * Gets the default toaster for general notifications
  * @returns {Object} The toaster contianer object
  */
-export const useGeneralToaster = () => general
+export const useGeneralToaster = (): ToasterNotifier => createGeneralToaster(_handler);

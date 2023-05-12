@@ -1,20 +1,52 @@
 {
   "name": "@vnuge/vnlib.browser",
-  "version": "1.0.6",
+  "version": "0.1.0",
   "description": "VNLib browser client base library for a Vue3 w/ VueUse web application.",
-  "main": "index.js",
-  "scripts": {},
+  "main": "./lib/index.js",
+  "types": "./lib/index.d.ts",
+  "typings": "./lib/index.d.ts",
+  "scripts": {
+    "lint": "eslint --ext .js,.ts --ignore-path .gitignore src",
+    "compile": "tsc",
+    "clean": "if exist dist ( rd /S /Q lib)"
+  },
   "author": "Vaughn Nugent",
   "license": "ISC",
   "devDependencies": {
-    "@vueuse/core": "^9.x",
+    "@types/lodash": "^4.14.194",
+    "@babel/types":"7.21.5",
+    "@typescript-eslint/eslint-plugin": "^5.59.1",
+    "eslint": "^8.39.0",
     "axios": "^1.x",
     "jose": "^4.13.x",
-    "lodash": "^4.x",
     "universal-cookie": "^4.0.4"
   },
   "peerDependencies": {
+    "@vueuse/core": "^10.x",
+    "lodash": "^4.x",
     "vue": "^3.x",
     "vue-router": "^4.x"
+  },
+  "eslintConfig": {
+    "root": true,
+    "extends": [
+      "eslint:recommended",
+      "plugin:@typescript-eslint/recommended"
+    ],
+    "parser": "@typescript-eslint/parser",
+    "parserOptions": {
+      "project": []
+    },
+    "plugins": [
+      "@typescript-eslint"
+    ],
+    "rules": {},
+    "ignorePatterns": [
+      "src/**/*.test.ts",
+      "src/frontend/generated/*"
+    ],
+    "env": {
+      "browser": true
+    }
   }
 }

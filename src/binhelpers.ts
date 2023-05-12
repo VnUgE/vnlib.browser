@@ -1,4 +1,4 @@
-// Copyright (c) 2022 Vaughn Nugent
+// Copyright (c) 2023 Vaughn Nugent
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy of
 // this software and associated documentation files (the "Software"), to deal in
@@ -18,7 +18,7 @@
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
-export const LongToArray = function (long) {
+export const LongToArray = function (long : number) {
   // Empty array
   const byteArray = Array(8).fill(0)
   for (let index = 0; index < 8; index++) {
@@ -29,7 +29,7 @@ export const LongToArray = function (long) {
   return byteArray
 }
 
-export const IntToArray = function(int) {
+export const IntToArray = function(int : number) {
   // Empty array
   const byteArray = Array(4).fill(0)
   for (let index = 0; index < 4; index++) {
@@ -40,33 +40,33 @@ export const IntToArray = function(int) {
   return byteArray
 }
 
-export const Base64ToArray = function (b64string) {
+export const Base64ToArray = function (b64string : string) : Array<number> {
   // Recover the encoded data
   const decData = atob(b64string)
   // Convert to array
   return Array.from(decData, c => c.charCodeAt(0))
 }
 
-export const Base64ToUint8Array = function (b64string) {
+export const Base64ToUint8Array = function (b64string : string) : Uint8Array {
   // Recover the encoded data
   const decData = atob(b64string)
   // Convert to array
   return Uint8Array.from(decData, c => c.charCodeAt(0))
 }
 
-export const Utf8StringToBuffer = function (str) {
+export const Utf8StringToBuffer = function (str : string) : Array<number> {
   // encode the string to utf8 binary
-  const enc = new TextEncoder('utf-8').encode(str)
+  const enc = new TextEncoder().encode(str)
   return Array.from(enc);
 }
 
-export const ArrayBuffToBase64 = function(e) {
+export const ArrayBuffToBase64 = function(e : ArrayBuffer) : string {
   const arr = Array.from(new Uint8Array(e))
   return btoa(String.fromCharCode.apply(null, arr))
 }
 
-export const ArrayToHexString = function(buffer) {
-  return Array.prototype.map.call(buffer, function (byte) {
+export const ArrayToHexString = function(buffer : Array<number> | ArrayBuffer) : string {
+  return Array.prototype.map.call(buffer, function (byte : number) {
     return ('0' + (byte & 0xFF).toString(16)).slice(-2)
   }).join('')
 }
