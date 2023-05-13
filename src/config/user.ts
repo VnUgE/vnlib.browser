@@ -20,7 +20,7 @@
 import { merge } from "lodash";
 import { configureUserBackend, useUser as _useUser, IUserBackend } from "../user";
 import { useSession, useSessionUtils, createReplaceableStorage } from "./session";
-import { IUserConfig } from '../types';
+import { IUserConfig, ReactiveStorageLike } from '../types';
 import { AxiosInstance } from 'axios';
 import { useAxios } from './axios';
 import { MaybeRef, StorageLike, useIntervalFn } from "@vueuse/core";
@@ -54,7 +54,7 @@ const userConfig = (defaultConfig: IUserConfigUpdate): UserConfig => {
 
     const getAccountBasePath = (): string => accountBasePath;
 
-    const getStorage = (): StorageLike => storage;
+    const getStorage = (): ReactiveStorageLike => storage;
 
     //Get global axios instance
     const getAxios = (): AxiosInstance => useAxios(null);

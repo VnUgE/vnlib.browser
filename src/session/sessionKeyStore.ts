@@ -23,8 +23,7 @@ import crypto, { decryptAsync } from "../webcrypto";
 import { ArrayBuffToBase64, Base64ToUint8Array } from '../binhelpers'
 import { ISessionKeyStore } from "./types";
 import { computed } from 'vue';
-import { ISessionConfig } from '../types';
-import { useStorage } from '@vueuse/core';
+import { ISessionConfig, createReactiveStorage } from '../types';
 
 const storageKey = "_vn-keys";
 
@@ -37,8 +36,8 @@ export const createKeyStore = (config: ISessionConfig) : ISessionKeyStore =>{
     //Get the storage backend
     const storageBackend = config.getStorage();
 
-    //Setup the key storage but it must be reactive, so a computed value is used
-    const storage = useStorage<IStorageValue>(storageKey, { private: null, public: null }, storageBackend)
+    //reactive storage element
+    const storage = createReactiveStorage<IStorageValue>(storageKey, { private: null, public: null }, storageBackend);
 
     //Setup reactive properties
     const privateKey = computed({

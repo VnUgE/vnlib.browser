@@ -18,8 +18,8 @@
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import { ref } from "vue";
-import { merge } from "lodash";
-import { ISessionConfig } from "../types";
+import { forEach, merge } from "lodash";
+import { ISessionConfig, ReactiveStorageLike } from "../types";
 import { ISessionBackend, ISessionUtil, ISession, createSessionBackend, useSession as _useSession } from "../session";
 import { StorageLike } from "@vueuse/core";
 
@@ -32,7 +32,7 @@ export interface ISessionConfigUpdate {
     readonly loginCookieName: string;
 }
 
-export interface ReplaceableStorage extends StorageLike {
+export interface ReplaceableStorage extends ReactiveStorageLike {
     setStorage(st?: StorageLike): void;
 }
 
@@ -59,7 +59,7 @@ const createConfig = (defaultConfig: ISessionConfigUpdate): SessionConfig => {
 
     const getKeyAlgorithm = (): object => keyAlg;
 
-    const getStorage = (): StorageLike => storage;
+    const getStorage = (): ReactiveStorageLike => storage;
 
     const updateConfig = (config: ISessionConfigUpdate) => {
         bidSize = config.bidSize;
@@ -85,6 +85,8 @@ const createConfig = (defaultConfig: ISessionConfigUpdate): SessionConfig => {
 
 export const createReplaceableStorage = (storage?: StorageLike): ReplaceableStorage => {
 
+    const onUpdate: Array<() => void> = [];
+
     const getItem = (key: string): string | null => {
         //If the storage is null, return null
         return storage?.getItem(key) ?? null;
@@ -101,12 +103,27 @@ export const createReplaceableStorage = (storage?: StorageLike): ReplaceableStor
 
     const setStorage = (st?: StorageLike) => {
         storage = st;
+        //invoke update event when set
+        forEach(onUpdate, cb => cb());
     }
+
+    const onStorageChanged = (key: string, callback: () => void) => {
+        //Listen for storage changes on the window and invoke the callback for all changes
+        window?.addEventListener('storage', ev => ev.key === key ? callback() : null);
+
+        //Store the callback
+        onUpdate.push(callback);
+
+        //intial update
+        callback();
+    }
+
     return{
         getItem,
         setItem,
         removeItem,
-        setStorage
+        setStorage,
+        onStorageChanged
     }
 }
 

@@ -1,10 +1,10 @@
 {
   "name": "@vnuge/vnlib.browser",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "VNLib browser client base library for a Vue3 w/ VueUse web application.",
-  "main": "./lib/index.js",
-  "types": "./lib/index.d.ts",
-  "typings": "./lib/index.d.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "typings": "./dist/index.d.ts",
   "scripts": {
     "lint": "eslint --ext .js,.ts --ignore-path .gitignore src",
     "compile": "tsc",

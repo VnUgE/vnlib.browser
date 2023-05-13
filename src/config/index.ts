@@ -27,7 +27,7 @@ export { useAxios, AxiosConfigUpdate } from './axios'
 
 //Export public user apis
 import { IUserConfigUpdate, updateUserConfig } from './user'
-export { IUserConfigUpdate, useUser } from './user'
+export { IUserConfigUpdate, useUser, useAutoHeartbeat } from './user'
 
 //Export toast apis directly
 export * from '../toast'

@@ -17,9 +17,10 @@
 // IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import { StorageLike } from "@vueuse/core";
+import { StorageLike, watchDebounced } from "@vueuse/core";
 import { AxiosInstance } from "axios";
-import { Ref } from "vue";
+import { defer, isEqual } from "lodash";
+import { Ref, ref } from "vue";
 
 export interface ISessionConfig {
     readonly cookiesEnabled: Readonly<Ref<boolean>>;
@@ -29,11 +30,44 @@ export interface ISessionConfig {
     getSignatureAlgorithm(): string;
     getKeyAlgorithm(): any;
 
-    getStorage(): StorageLike;
+    getStorage(): ReactiveStorageLike;
 }
 
 export interface IUserConfig {
     getAccountBasePath(): string;
-    getStorage(): StorageLike;
+    getStorage(): ReactiveStorageLike;
     getAxios(): AxiosInstance
+}
+
+export interface ReactiveStorageLike extends StorageLike {
+    onStorageChanged: (key: string, callback: () => void) => void;
+}
+
+export const createReactiveStorage = <T>(key: string, defaultValue: T, backend: ReactiveStorageLike): Ref<T> => {
+    //reactive storage element
+    const storage = ref<T>(defaultValue);
+
+    //Recovers data from storage
+    const onUpdate = () => {
+        const string = backend.getItem(key);
+        storage.value = JSON.parse(string || "{}");
+    }
+
+    //Watch storage changes
+    backend.onStorageChanged(key, onUpdate);
+
+    //Watch for reactive changes and write to storage
+    watchDebounced(storage, (value) => defer(() =>{
+        //Convert to string and store
+        const string = JSON.stringify(value);
+        const oldValue = backend.getItem(key);
+        //Only write if the value has changed
+        if(isEqual(string, oldValue)){ 
+            return;
+        }
+        //Write to storage
+        backend.setItem(key, string);
+    }), { deep: true, debounce: 100 })
+
+    return storage as Ref<T>;
 }

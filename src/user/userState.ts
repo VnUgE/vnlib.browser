@@ -19,16 +19,18 @@
 
 import { computed } from "vue";
 import { IUserState } from "./types";
-import { IUserConfig } from "../types";
-import { useStorage } from "@vueuse/core";
+import { IUserConfig, createReactiveStorage } from "../types";
 
 const storageKey = "_vn-user";
+
 
 export const createUserState = (config : IUserConfig) : IUserState => {
 
     //Get the storage backend and create a reactive storage object
     const backend = config.getStorage();
-    const storage = useStorage(storageKey, { userName: '' }, backend)
+
+    //Create a reactive storage object
+    const storage = createReactiveStorage(storageKey, {userName: ''}, backend);
 
     //Reactive username property
     const userName = computed({

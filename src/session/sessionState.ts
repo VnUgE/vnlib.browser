@@ -19,8 +19,7 @@
 
 import { ISessionState } from "./types";
 import { computed } from "vue";
-import { ISessionConfig } from "../types";
-import { useStorage } from "@vueuse/core";
+import { ISessionConfig, createReactiveStorage } from "../types";
 
 const storageKey = "_vn-session";
 
@@ -34,8 +33,8 @@ export const createState = (config: ISessionConfig) : ISessionState =>{
     //get dynamic storage backend
     const storageBackend = config.getStorage();
 
-    //Setup vuesuse storage around the backend
-    const storage = useStorage <IStateStorage>(storageKey, { token: null, bid: null }, storageBackend)
+    //reactive storage element
+    const storage = createReactiveStorage<IStateStorage>(storageKey, { token: null, bid: null }, storageBackend);
 
     //Reactive properties
     const token = computed({
