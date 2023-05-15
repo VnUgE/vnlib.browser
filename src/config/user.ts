@@ -23,8 +23,8 @@ import { useSession, useSessionUtils, createReplaceableStorage } from "./session
 import { IUserConfig, ReactiveStorageLike } from '../types';
 import { AxiosInstance } from 'axios';
 import { useAxios } from './axios';
-import { MaybeRef, StorageLike, useIntervalFn } from "@vueuse/core";
-import { Ref, computed, isRef, ref } from "vue";
+import { StorageLike, useIntervalFn } from "@vueuse/core";
+import { Ref, computed, ref } from "vue";
 
 
 /**
@@ -33,13 +33,17 @@ import { Ref, computed, isRef, ref } from "vue";
 export interface IUserConfigUpdate {
     readonly storage?: StorageLike;
     readonly accountBasePath: string;
+    readonly autoHearbeatInterval: number;
 }
 
 export interface UserConfig extends IUserConfig {
     updateConfig(config: IUserConfigUpdate): void;
+    readonly autoHeartbeatInterval: Readonly<Ref<number>>;
 }
 
 const userConfig = (defaultConfig: IUserConfigUpdate): UserConfig => {
+
+    const autoHeartbeatInterval = ref(defaultConfig.autoHearbeatInterval);
 
     //Setup the account base path
     let accountBasePath: string = defaultConfig.accountBasePath;
@@ -50,6 +54,7 @@ const userConfig = (defaultConfig: IUserConfigUpdate): UserConfig => {
     const updateConfig = (config: IUserConfigUpdate): void => {
         storage.setStorage(config.storage);
         accountBasePath = config.accountBasePath;
+        autoHeartbeatInterval.value = config.autoHearbeatInterval;
     }
 
     const getAccountBasePath = (): string => accountBasePath;
@@ -63,7 +68,8 @@ const userConfig = (defaultConfig: IUserConfigUpdate): UserConfig => {
         getAccountBasePath,
         getStorage,
         getAxios,
-        updateConfig
+        updateConfig,
+        autoHeartbeatInterval,
     }
 }
 
@@ -76,6 +82,8 @@ export const getDefaultUserConfig = (): IUserConfigUpdate => {
         accountBasePath: '/account',
         //Default to no persistant storage
         storage: undefined,
+        //Default to disabled
+        autoHearbeatInterval: 0
     }
 };
 
@@ -112,23 +120,54 @@ export const updateUserConfig = (update : IUserConfigUpdate) =>{
     (backend().config as UserConfig).updateConfig(defaultConfig);
 }
 
+export interface IAutoHeartbeatControls {
+    /**
+     * The current state of the heartbeat interval
+     */
+    enabled: Ref<boolean>;
+    /**
+     * Enables the hearbeat interval if configured
+     */
+    enable: () => void;
+    /**
+     * Disables the heartbeat interval
+     */
+    disable: () => void;
+}
+
 /**
- * Setup the automatic heartbeat interval
- * @param interval The interval in milliseconds to run heartbeat 
- * @returns The heartbeat interval ref to control the interval after creation
+ * Setup or control the automatic heartbeat interval
+ * @returns Controls for the heartbeat interval
  */
-export const useAutoHeartbeat = (interval: MaybeRef<number> = 0): {interval:Ref<number>} => {
+export const useAutoHeartbeat = (() =>{
+
     //get live singleton of the user backend so we can read properties
     const _backend = backend();
+
+    //Source of truth for the interval from config
+    const { autoHeartbeatInterval } = (_backend.config as UserConfig);
+    
     //Local copy of uesr instance
     const { heartbeat } = _useUser(_backend);
+   
+    //Initial setup, disabled by default
+    const _interval = ref<number>(0);
 
-    //Get the heartbeat interval ref
-    const hbInterval = isRef(interval) ? interval : ref(interval);
-    const hbEnabled = computed(() => hbInterval.value > 0);
+    const enabled = computed({
+        get: () => _interval.value > 0,
+        set: (value) => _interval.value = (value === true) ? autoHeartbeatInterval.value : 0
+    })
+
+    const enable = () => enabled.value = true;
+    const disable = () => enabled.value = false;
 
     //Setup the automatic heartbeat interval
-    useIntervalFn(() => hbEnabled.value && _backend.session.loggedIn.value ? heartbeat() : null, hbInterval);
+    useIntervalFn(() => enabled.value && _backend.session.loggedIn.value ? heartbeat() : null, autoHeartbeatInterval);
 
-    return { interval: hbInterval }
-}
+    /**
+     * Configures shared controls for the heartbeat interval
+     */
+    return (): IAutoHeartbeatControls => {
+        return { enabled, enable, disable }
+    }
+})();

@@ -105,7 +105,7 @@ export const apiCall = (() =>{
  * @param msg The message to display when an error occurs
  * @returns {Object} The api call object {apiCall: Promise }
  */
-export const configureApiCall = (msg: (message : string) => void): object =>{
+export const configureApiCall = (msg: (message : string) => void) =>{
     //Confiugre the api call to use global configuration
     const apiCall = useApiCall(customApiHandle(msg));
     return { apiCall }
