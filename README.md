@@ -80,9 +80,10 @@ const { userName,
         resetPassword,
         heartbeat } = useUser();
         
-//Configure the auto-heartbeat when logged in to update credentials
-const interval = useAutoHeartbeat(5 * 60 * 1000);
-//Manual heartbeat request
+//Hb interval is set curing configureApiCall and is read-only
+const { enabled, enable, disable } = useAutoHeartbeat();
+enabled.value = false; //Reactive ref to enable/disable interval
+//Manual heartbeat request against server
 await heartbeat();
 
 //basic usage
