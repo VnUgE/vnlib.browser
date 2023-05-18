@@ -24,7 +24,7 @@ import { IUserConfig, ReactiveStorageLike } from '../types';
 import { AxiosInstance } from 'axios';
 import { useAxios } from './axios';
 import { StorageLike, useIntervalFn } from "@vueuse/core";
-import { Ref, computed, ref } from "vue";
+import { MaybeRefOrGetter, Ref, isRef, ref, watch } from "vue";
 
 
 /**
@@ -83,7 +83,7 @@ export const getDefaultUserConfig = (): IUserConfigUpdate => {
         //Default to no persistant storage
         storage: undefined,
         //Default to disabled
-        autoHearbeatInterval: 0
+        autoHearbeatInterval: 100000000000000
     }
 };
 
@@ -146,28 +146,39 @@ export const useAutoHeartbeat = (() =>{
 
     //Source of truth for the interval from config
     const { autoHeartbeatInterval } = (_backend.config as UserConfig);
-    
+
     //Local copy of uesr instance
     const { heartbeat } = _useUser(_backend);
-   
-    //Initial setup, disabled by default
-    const _interval = ref<number>(0);
-
-    const enabled = computed({
-        get: () => _interval.value > 0,
-        set: (value) => _interval.value = (value === true) ? autoHeartbeatInterval.value : 0
-    })
-
-    const enable = () => enabled.value = true;
-    const disable = () => enabled.value = false;
 
     //Setup the automatic heartbeat interval
-    useIntervalFn(() => enabled.value && _backend.session.loggedIn.value ? heartbeat() : null, autoHeartbeatInterval);
+    const { isActive, pause, resume } = useIntervalFn(() => _backend.session.loggedIn.value ? heartbeat() : null, autoHeartbeatInterval);
+
+    //Pause until the manually enabled
+    pause();
 
     /**
      * Configures shared controls for the heartbeat interval
+     * @param enabled The a reactive value that may be used to enable/disable the heartbeat interval
      */
-    return (): IAutoHeartbeatControls => {
-        return { enabled, enable, disable }
+    return (enabled: MaybeRefOrGetter<boolean> | undefined = undefined): IAutoHeartbeatControls => {
+        
+        if(isRef(enabled)){
+            if(enabled.value){
+                //Resume the timer now 
+                resume();
+            }
+            else{
+                //Pause the timer now
+                pause();
+            }
+            //Watch for changes to the enabled state
+            watch(enabled, en => en ? resume() : pause());
+        }
+        else if(enabled === true){
+            //Resume the timer now 
+            resume();
+        }
+
+        return { enabled:isActive, enable:resume, disable:pause }
     }
 })();
