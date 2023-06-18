@@ -17,8 +17,8 @@
 // IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import { merge } from 'lodash'
-import axios from 'axios';
+import { isObjectLike, merge } from 'lodash'
+import axios, { AxiosResponse } from 'axios';
 import { IAxiosConfig } from './types';
 import { ISession, ISessionUtil } from '../session';
 
@@ -72,6 +72,23 @@ export const useAxios = (backend: IAxiosBackend, config : object | null) => {
     }, function (error) {
         // Do something with request error
         return Promise.reject(error)
+    })
+
+    //Add response interceptor to add a function to the response to get the result or throw an error to match the WebMessage server message
+    axiosInstance.interceptors.response.use((response : AxiosResponse) => {
+        
+        //Add a function to the response to get the result or throw an error
+        if(isObjectLike(response.data)){
+            response.data.getResultOrThrow = () => {
+                if (response.data.success) {
+                    return response.data.result;
+                } else {
+                    //Throw in apicall format to catch in the catch block
+                    throw { response };
+                }
+            }
+        }
+        return response;
     })
 
     return axiosInstance;

@@ -18,9 +18,9 @@
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import { Ref } from "vue";
-import { ISessionConfig } from "../types";
+import { ISessionConfig, WebMessage } from "../types";
 
-export interface ITokenResponse{
+export interface ITokenResponse extends WebMessage{
     readonly token: Readonly<string>;
 }
 

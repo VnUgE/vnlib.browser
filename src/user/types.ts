@@ -19,7 +19,7 @@
 
 import { AxiosInstance, AxiosResponse } from "axios"
 import { Ref } from "vue"
-import { IUserConfig } from "../types"
+import { IUserConfig, WebMessage } from "../types"
 import { ISessionUtil, ISession } from "../session/types"
 
 export interface IUser {
@@ -54,6 +54,11 @@ export interface IUserBackend {
 
 export interface IUserState{
     readonly userName: Ref<string | null>
+}
+
+export interface ILoginResponse<T> extends WebMessage<T> {
+    token?: string;
+    mfa?: boolean;
 }
 
 export enum Endpoints {

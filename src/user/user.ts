@@ -20,9 +20,10 @@
 import { isNil, toInteger, defaultTo } from 'lodash'
 import { AxiosResponse } from "axios"
 import { computed, watch } from "vue"
-import { IUser, IUserLoginRequest, IUserBackend, Endpoints } from './types'
+import { IUser, IUserLoginRequest, IUserBackend, Endpoints, ILoginResponse } from './types'
 import { decodeJwt } from 'jose'
 import { debugLog } from '../util'
+import { ITokenResponse } from '../session'
 
 export const createUser = (backend: IUserBackend) : IUser => {
 
@@ -101,7 +102,7 @@ export const createUser = (backend: IUserBackend) : IUser => {
         prepped.password = password;
 
         //Send the login request
-        const response = await post(ep, prepped);
+        const response = await post<ILoginResponse<string>>(ep, prepped);
 
         // Check the response
         if(response.status === 200 && response.data.success === true) {
@@ -158,7 +159,7 @@ export const createUser = (backend: IUserBackend) : IUser => {
         const ep = backend.getEndpoint(Endpoints.HeartBeat);
 
         // Send a post to the heartbeat endpoint
-        const response = await post(ep);
+        const response = await post<ITokenResponse>(ep);
         
         //If success flag is set, update the credentials
         if(response.data.success){
