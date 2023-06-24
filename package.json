@@ -1,6 +1,6 @@
 {
   "name": "@vnuge/vnlib.browser",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "author": "Vaughn Nugent",
   "description": "VNLib browser client base library for a Vue3 w/ VueUse web application.",
   "main": "./dist/index.js",
