@@ -20,16 +20,40 @@
 import { AxiosInstance, AxiosResponse } from "axios"
 import { Ref } from "vue"
 import { IUserConfig, WebMessage } from "../types"
-import { ISessionUtil, ISession } from "../session/types"
+import { ISessionUtil, ISession, ITokenResponse } from "../session/types"
 
 export interface IUser {
+    /**
+     * A reactive ref to the username of the current user.
+     * Its updated on calls to getProfile
+     */
     readonly userName: Ref<string | null>
-
+    /**
+     * Prepares a login request for the server
+     */
     prepareLogin(): IUserLoginRequest
-    logout(): Promise<AxiosResponse>
-    login(userName: string, password: string): Promise<AxiosResponse>
-    getProfile(): Promise<any>
-    resetPassword(current: string, newPass: string, args: object): Promise<AxiosResponse>
+    /**
+     * Attempts to log the user out 
+     */
+    logout(): Promise<WebMessage>
+    /**
+     * Attempts to log the user in with a possible mfa upgrade result
+     * @param userName The username to login with
+     * @param password The password to login with
+     * @returns A promise that resolves to the login result
+     */
+    login<T>(userName: string, password: string): Promise<ExtendedLoginResponse<T>>
+    /**
+     * Gets the user profile from the server
+     */
+    getProfile<T extends IUserProfile>(): Promise<T>
+    /**
+     * Resets the password for the current user
+     * @param current the user's current password
+     * @param newPass the user's new password
+     * @param args any additional arguments to send to the server
+     */
+    resetPassword(current: string, newPass: string, args: object): Promise<WebMessage>
     /**
      * Sends a heartbeat to the server to keep the session alive
      * and regenerate credentials as designated by the server.
@@ -38,7 +62,11 @@ export interface IUser {
 }
 
 export interface IUserLoginRequest {
-    finalize(response: AxiosResponse): Promise<void>
+    /**
+     * Finalizes a login process with the given response from the server
+     * @param response The finalized login response from the server
+     */
+    finalize(response: ITokenResponse): Promise<void>
 }
 
 export interface IUserBackend {
@@ -46,7 +74,13 @@ export interface IUserBackend {
     readonly userState: IUserState;
     readonly sessionUtil: ISessionUtil;
     readonly session: ISession;
+    /**
+     * Gets the axios instance for the user backend
+     */
     getAxios(): AxiosInstance;
+    /**
+     * Gets the server endpoint for the given endpoint name
+     */
     getEndpoint(endpoint: Endpoints): string;
     getPublcKey(): string | null;
     getBrowserId(): string | null;
@@ -56,9 +90,8 @@ export interface IUserState{
     readonly userName: Ref<string | null>
 }
 
-export interface ILoginResponse<T> extends WebMessage<T> {
-    token?: string;
-    mfa?: boolean;
+export interface ExtendedLoginResponse<T> extends WebMessage<T> {
+    finalize: (response : ITokenResponse) => Promise<void>
 }
 
 export enum Endpoints {
@@ -67,6 +100,9 @@ export enum Endpoints {
     Register = "register",
     Reset = "reset",
     Profile = "profile",
-    HeartBeat = "keepalive",
-    MfaTotp = "login?mfa=totp"
+    HeartBeat = "keepalive"
+}
+
+export interface IUserProfile {
+    readonly email: string | undefined;
 }

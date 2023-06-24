@@ -36,7 +36,7 @@ export interface ISessionConfig {
 export interface IUserConfig {
     getAccountBasePath(): string;
     getStorage(): ReactiveStorageLike;
-    getAxios(): AxiosInstance
+    getAxios(): AxiosInstance;
 }
 
 export interface ReactiveStorageLike extends StorageLike {

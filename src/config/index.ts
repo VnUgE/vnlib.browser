@@ -59,6 +59,9 @@ export * from './pageGuard'
 //Export the all util
 export * from '../util';
 
+//Export webm types
+export { WebMessage, ServerValidationError } from '../types'
+
 export interface IGlobalApiConfig{
     readonly session: ISessionConfigUpdate;
     readonly axios: AxiosConfigUpdate;

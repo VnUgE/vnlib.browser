@@ -20,9 +20,7 @@
 import { Ref } from "vue";
 import { ISessionConfig, WebMessage } from "../types";
 
-export interface ITokenResponse extends WebMessage{
-    readonly token: Readonly<string>;
-}
+
 
 /**
  * Session utility interface, to interacte/manipulate the client/server session
@@ -135,4 +133,8 @@ export interface ISession {
 
 export interface ISessionCookieManager {
     readonly loginCookie: Readonly<Ref<number>>;
+}
+
+export interface ITokenResponse extends WebMessage {
+    readonly token: Readonly<string>;
 }

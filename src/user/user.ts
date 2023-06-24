@@ -17,80 +17,61 @@
 // IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import { isNil, toInteger, defaultTo } from 'lodash'
+import { isNil, defaultTo } from 'lodash'
 import { AxiosResponse } from "axios"
 import { computed, watch } from "vue"
-import { IUser, IUserLoginRequest, IUserBackend, Endpoints, ILoginResponse } from './types'
-import { decodeJwt } from 'jose'
-import { debugLog } from '../util'
+import { IUser, IUserBackend, Endpoints, IUserProfile, ExtendedLoginResponse } from './types'
 import { ITokenResponse } from '../session'
+import { WebMessage } from '../types'
 
-export const createUser = (backend: IUserBackend) : IUser => {
+export interface IUserInternal extends IUser {
+    readonly backend: IUserBackend
+}
+
+export const createUser = (backend: IUserBackend): IUserInternal => {
 
     //Ref to the user state username property
     const userName = computed(() => backend.userState.userName.value);
 
-    const prepareLogin = () => createLoginMessage(backend);
+    const prepareLogin = () => {
+        //Store a copy of the session data and the current time for the login request
+        const finalize = async (response: ITokenResponse): Promise<void> => {
+            //Update the session with the new credentials
+            await backend.sessionUtil.updateCredentials(response);
+
+            //Update the user state with the new username
+            backend.userState.userName.value = (response as { email? : string }).email || null;
+        }
+        return {
+            localtime: new Date().toISOString(),
+            locallanguage: navigator.language,
+            pubkey: backend.getPublcKey(),
+            clientid: backend.getBrowserId(),
+            username: '',
+            password: '',
+            finalize
+        }
+    }
 
     //We want to watch the loggin ref and if it changes to false, clear the username
     watch(backend.session.loggedIn, value => value === false ? backend.userState.userName.value = null : null)
 
-    const processMfa = (mfaMessage: string, loginMessage: IUserLoginRequest) => {
-        //Mfa message is a jwt, decode it (unsecure decode)
-        const mfa = decodeJwt(mfaMessage)
-
-        debugLog(mfa)
-
-        switch (mfa.type) {
-            case 'totp':
-                {
-                    const { type, expires } = mfa;
-
-                    const Submit = async (code: string): Promise<AxiosResponse> => {
-                        const { post } = backend.getAxios();
-                        //Totp endpoint submission
-                        const ep = backend.getEndpoint(Endpoints.MfaTotp);
-
-                        // Submit totp request to the server
-                        const response = await post(ep, {
-                            //Pass raw upgrade message back to server as its signed
-                            upgrade: mfaMessage,
-                            //totp code as an integer type
-                            code: toInteger(code),
-                            //Local time as an ISO string of the current time
-                            localtime: new Date().toISOString()
-                        })
-
-                        // If the server returned a token, complete the login
-                        if (response.data.success && !isNil(response.data.token)) {
-                            await loginMessage.finalize(response)
-                        }
-
-                        return response
-                    }
-                    return { type, expires, Submit }
-                }
-            default:
-                throw { message: 'Server responded with an unsupported two factor auth type, login cannot continue.' }
-        }
-    }
-
-    const logout = async (): Promise <AxiosResponse> => {
+    const logout = async (): Promise<WebMessage> => {
         //Get axios with logout endpoint
         const { post } = backend.getAxios();
         const ep = backend.getEndpoint(Endpoints.Logout);
 
         // Send a post to the accoutn login endpoint to logout
-        const result = await post(ep, {});
+        const { data } = await post<WebMessage>(ep, {});
 
-        //regen session credentials
+        //regen session credentials on successful logout
         await backend.sessionUtil.KeyStore.regenerateKeysAsync()
 
         // return the response
-        return result
+        return data
     }
 
-    const login = async (userName: string, password: string): Promise <AxiosResponse> => {
+    const login = async <T>(userName: string, password: string): Promise<ExtendedLoginResponse<T>> => {
         //Get axios and the login endpoint
         const { post } = backend.getAxios();
         const ep = backend.getEndpoint(Endpoints.Login);
@@ -102,33 +83,30 @@ export const createUser = (backend: IUserBackend) : IUser => {
         prepped.password = password;
 
         //Send the login request
-        const response = await post<ILoginResponse<string>>(ep, prepped);
+        const { data } = await post<ITokenResponse>(ep, prepped);
 
         // Check the response
-        if(response.status === 200 && response.data.success === true) {
+        if(data.success === true) {
 
             // If the server returned a token, complete the login
-            if (!isNil(response.data.token)) {
-                await prepped.finalize(response)
-            }
-            // Check for a two factor auth mesage
-            else if (response.data.mfa === true) {
-                // Process the two factor auth message and add it to the response
-                const mfa = { mfa: processMfa(response.data.result, prepped) }
-                Object.assign(response, mfa)
-                return response
+            if (!isNil(data.token)) {
+                await prepped.finalize(data)
             }
         }
-        return response;
+
+        return {
+            ...data,
+            finalize: prepped.finalize
+        }
     }
 
-    const getProfile = async (): Promise <any> => {
+    const getProfile = async <T extends IUserProfile>(): Promise <T> => {
         //Get axios and the profile endpoint
         const { get } = backend.getAxios();
         const ep = backend.getEndpoint(Endpoints.Profile);
 
         // Get the user's profile from the profile endpoint
-        const response = await get(ep);
+        const response = await get<T>(ep);
 
         //Update the internal username if it was set by the server
         const newUsername = defaultTo(response.data.email, userName.value);
@@ -140,17 +118,19 @@ export const createUser = (backend: IUserBackend) : IUser => {
         return response.data
     }
 
-    const resetPassword = (current: string, newPass: string, args: object): Promise <AxiosResponse> => {
+    const resetPassword = async (current: string, newPass: string, args: object): Promise<WebMessage> => {
         //Get axios and the reset password endpoint
         const { post } = backend.getAxios();
         const ep = backend.getEndpoint(Endpoints.Reset);
 
         // Send a post to the reset password endpoint
-        return post(ep, {
+        const { data } = await post<WebMessage>(ep, {
             current,
             new_password: newPass,
             ...args
         })
+
+        return data
     }
 
     const heartbeat = async (): Promise <AxiosResponse> => {
@@ -176,31 +156,7 @@ export const createUser = (backend: IUserBackend) : IUser => {
         login,
         getProfile,
         resetPassword,
-        heartbeat
-    }
-}
-
-const createLoginMessage = (backend: IUserBackend) => {
-    //Store a copy of the session data and the current time for the login request
-    const localtime = new Date().toISOString();
-    const locallanguage = navigator.language;
-    const pubkey = backend.getPublcKey();
-    const clientid = backend.getBrowserId();
-
-    const finalize = async (response: AxiosResponse): Promise<void> => {
-        //Update the session with the new credentials
-        await backend.sessionUtil.updateCredentials(response.data);
-
-        //Update the user state with the new username
-        backend.userState.userName.value = response.data.email;
-    }
-    return{
-        localtime,
-        locallanguage,
-        pubkey,
-        clientid,
-        username: '',
-        password: '',
-        finalize
+        heartbeat,
+        backend
     }
 }
